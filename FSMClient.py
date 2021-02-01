@@ -1,15 +1,15 @@
-import time,sys,traceback,math,json,copy
-import os
-import socketio
-import numpy as np
-
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+import sys
 # Import your robots
-#from Robots import *
 sys.path.insert(0,'..')
-from MrRandTree import MrRandTree
+#from MrRandTree import MrRandTree
+from MrZeroTree import MrZeroTree
 
-Recording_History = True
+robot_list = [MrZeroTree,]
+robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
 
+import time,traceback,math,json,copy
 LOGLEVEL={0:"DEBUG",1:"INFO",2:"WARN",3:"ERR",4:"FATAL"}
 LOGFILE=sys.argv[0].split(".")
 LOGFILE[-1]="log"
@@ -30,6 +30,11 @@ def log(msg,l=1,end="\n",logfile=None,fileonly=False):
         with open(logfile,"a") as f:
             f.write(tempstr)
 
+import socketio
+import numpy as np
+
+Recording_History = True
+
 class RobotFamily:
     def __init__(self,url):
         self.members = []
@@ -42,8 +47,8 @@ class RobotFamily:
 
         @self.sio.event
         def connect():
-            self.sendmsg('update_sid',{'user':''})
             log("connecting to server %s" % (pt.url))
+            self.sendmsg('update_sid',{'user':''})
             if self.turn == 10000: #?
                 for pl in self.members:
                     resnp = np.array(pl.res) #?
@@ -581,5 +586,9 @@ if __name__=="__main__":
     with open("config.py",'r') as f:
         config=literal_eval(f.read())
         log("read log from %s: %s"%(f.name,config))
+    log("You are using socketio %s"%(socketio.__version__))
     fm = RobotFamily('http://%s:%d'%(config["ip"],config["port"]))
-    fm.connect()
+    try:
+        fm.connect()
+    except:
+        log("",l=3)
