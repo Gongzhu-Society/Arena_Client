@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-import time,sys,traceback,math,json,copy
+import time,sys,traceback,math
 LOGLEVEL={0:"DEBUG",1:"INFO",2:"WARN",3:"ERR",4:"FATAL"}
 LOGFILE=sys.argv[0].split(".")
 LOGFILE[-1]="log"
@@ -15,11 +15,14 @@ def log(msg,l=1,end="\n",logfile=None,fileonly=False):
         tempstr="%s [%s,%s:%d] %s:\n%s%s"%(now_str,lstr,st.name,st.lineno,str(msg),traceback.format_exc(limit=5),end)
     if not fileonly:
         print(tempstr,end="")
-    if l>=1 or fileonly:
+    if l>=2 or fileonly:
         if logfile==None:
             logfile=LOGFILE
         with open(logfile,"a") as f:
             f.write(tempstr)
+
+import socketio,engineio,copy,json
+import numpy as np
 
 #import your Robots
 sys.path.insert(0,'..')
@@ -27,10 +30,6 @@ from MrZeroTree import MrZeroTree
 
 robot_list = [MrZeroTree,]
 robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
-log("robot_dict: %s"%(robot_dict))
-
-import socketio,engineio
-import numpy as np
 
 Recording_History = True
 
@@ -46,11 +45,12 @@ class RobotFamily:
 
         @self.sio.event
         def connect():
-            log("connecting to server %s" % (pt.url))
-            self.sendmsg('update_sid',{'user':''})
-            if self.turn == 10000: #?
+            log("robot_dict: %s"%(robot_dict))
+            self.sendmsg('update_sid',{'robot_list':list(robot_dict.keys())})
+            log("connected to server %s" % (pt.url))
+            if self.turn == 10000:
                 for pl in self.members:
-                    resnp = np.array(pl.res) #?
+                    resnp = np.array(pl.res)
                     print('{} mean:{} var:{}'.format(pl.name,resnp.mean(),math.sqrt(resnp.var())))
                 self.sio.disconnect()
                 return
@@ -60,7 +60,7 @@ class RobotFamily:
 
         @self.sio.event
         def disconnect():
-            self.turn += 1 #? sometimes self sometimes pt?
+            self.turn += 1
             log("disconnect from server %s" % (pt.url))
 
         @self.sio.on('login_reply')
@@ -138,9 +138,9 @@ class RobotFamily:
             name = data['user']
             self.cancel_player(name)
 
-    def recovery(self,data): #?
+    def recovery(self,data):
         data = self.strip_data(data)
-        if isinstance(data, int): #?
+        if isinstance(data, int):
             return
         player = self.find_player(data['user'])
         if not player:
@@ -184,6 +184,7 @@ class RobotFamily:
         if player.state == 'end':
             player.scores = copy.deepcopy(data['scores'])
             player.scores_num = copy.copy(data['scores_num'])
+            #print('data:{}'.format(data['scores_num']))
             player.gameend()
             self.sendmsg('new_game',{'user':player.name})
             return
@@ -196,6 +197,7 @@ class RobotFamily:
 
     def connect(self):
         self.sio.connect(self.url)
+        #time.sleep(1)
 
     def sendmsg(self, cmd, dict):
         log("sending %s: %s to server" % (cmd, dict))
@@ -245,7 +247,7 @@ class RobotFamily:
         rb.master = master
         self.members.append(rb)
         #'login': {"user": "name", "user_pwd": "pwd", "room": roomid}
-        #TODO:place, robot password #?
+        #TODO:place, robot password
         self.sendmsg('login',{"user":name,"user_pwd":-1,"is_robot":True,"robot_type":robot.family_name()})
         return name
 
@@ -366,6 +368,7 @@ class RobotFamily:
 
         player.initial_cards = copy.deepcopy(data["cards"])
         player.cards_list = copy.deepcopy(data["cards"])
+        player.scores = [[],[],[],[]]
         player.state = 'trick_before_play'
         player.shuffle()
 
@@ -556,7 +559,6 @@ class RobotFamily:
         self.sendmsg('logout',{'user':name})
 
     def addrobot(self, data):
-        log("in addrobot")
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -567,7 +569,6 @@ class RobotFamily:
         rb = robot_dict[rb_name]
 
         self.add_member(room,place,rb,master=data['master'])
-        log("sent msg: %s"%(rb))
 
     def close_family(self):
         if len(self.members) == 0:
@@ -585,11 +586,17 @@ class RobotFamily:
 if __name__=="__main__":
     from ast import literal_eval
     with open("config.py",'r') as f:
-        config=literal_eval(f.read())
+        config=literal_eval(f.read()) #a dict like: {"port":9000}
         log("read log from %s: %s"%(f.name,config))
     log("You are using socketio %s, engineio %s"%(socketio.__version__,engineio.__version__))
     fm = RobotFamily('http://%s:%d'%(config["ip"],config["port"]))
-    try:
-        fm.connect()
-    except:
-        log("",l=3)
+    fm.connect()
+
+#if __name__ == '__main__':
+#    fm.create_room(MrGreed)
+#    while fm.members[0].room <= 0:
+#        pass
+#    rmid = fm.members[0].room
+#    fm.add_member(rmid,1,MrGreed)
+#    fm.add_member(rmid,2,MrGreed)
+#    fm.add_member(rmid,3,MrGreed)
