@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-import sys
-# Import your robots
-sys.path.insert(0,'..')
-#from MrRandTree import MrRandTree
-from MrZeroTree import MrZeroTree
-
-robot_list = [MrZeroTree,]
-robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
-
-import time,traceback,math,json,copy
+import time,sys,traceback,math,json,copy
 LOGLEVEL={0:"DEBUG",1:"INFO",2:"WARN",3:"ERR",4:"FATAL"}
 LOGFILE=sys.argv[0].split(".")
 LOGFILE[-1]="log"
@@ -30,7 +21,15 @@ def log(msg,l=1,end="\n",logfile=None,fileonly=False):
         with open(logfile,"a") as f:
             f.write(tempstr)
 
-import socketio
+#import your Robots
+sys.path.insert(0,'..')
+from MrZeroTree import MrZeroTree
+
+robot_list = [MrZeroTree,]
+robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
+log("robot_dict: %s"%(robot_dict))
+
+import socketio,engineio
 import numpy as np
 
 Recording_History = True
@@ -557,6 +556,7 @@ class RobotFamily:
         self.sendmsg('logout',{'user':name})
 
     def addrobot(self, data):
+        log("in addrobot")
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -567,6 +567,7 @@ class RobotFamily:
         rb = robot_dict[rb_name]
 
         self.add_member(room,place,rb,master=data['master'])
+        log("sent msg: %s"%(rb))
 
     def close_family(self):
         if len(self.members) == 0:
@@ -586,7 +587,7 @@ if __name__=="__main__":
     with open("config.py",'r') as f:
         config=literal_eval(f.read())
         log("read log from %s: %s"%(f.name,config))
-    log("You are using socketio %s"%(socketio.__version__))
+    log("You are using socketio %s, engineio %s"%(socketio.__version__,engineio.__version__))
     fm = RobotFamily('http://%s:%d'%(config["ip"],config["port"]))
     try:
         fm.connect()
