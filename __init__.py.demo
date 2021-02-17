@@ -1,6 +1,5 @@
 #import sys
 #sys.path.insert(0,'..')
-#from MrZeroTree import MrZeroTree
 
 import your_robot
 
