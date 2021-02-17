@@ -1,16 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 from Utils import log
-import socketio,engineio,copy,json,time,os
+from typing import List
+import socketio,engineio,copy,json,time,os,math
 import numpy as np
+import code,sys
+import threading
 from __init__ import robot_dict
 
 if not os.path.exists('Records'):
     os.makedirs('Records')
     log("create dir: Records")
+import socket
+
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
 
 class RobotFamily:
     def __init__(self,url):
+        self.name = get_ip()
         self.members = []
         self.sio = socketio.Client()
         self.url = url
@@ -22,7 +40,7 @@ class RobotFamily:
         @self.sio.event
         def connect():
             log("robot_dict: %s"%(robot_dict))
-            self.sendmsg('update_sid',{'robot_list':list(robot_dict.keys())})
+            self.sendmsg('update_sid',{'robot_list':list(robot_dict.keys()),'name':self.name})
             log("connected to server %s" % (pt.url))
             if self.turn == 10000:
                 for pl in self.members:
@@ -42,6 +60,10 @@ class RobotFamily:
         @self.sio.on('login_reply')
         def login_reply(data):
             pt.loginreply(data)
+
+        @self.sio.on('your_robots')
+        def your_robots(data):
+            pt.yourrobots(data)
 
         @self.sio.on('create_room_reply')
         def create_room_reply(data):
@@ -113,6 +135,23 @@ class RobotFamily:
             data = self.strip_data(data)
             name = data['user']
             self.cancel_player(name)
+
+    def yourrobots(self,data):
+        data = self.strip_data(data)
+        rbl = data["list"]
+        for name in rbl:
+            pl = self.find_player(name)
+            if pl is None:
+                import re
+                parttern = re.compile(r'[0-9]')
+                len0 = parttern.search(name).span()
+                print(len0)
+                len0 = len0[0]
+                rbtype = name[:len0]
+                robot = robot_dict[rbtype]
+                self.add_member(-1,-1,robot,name = name,requir_enter = False)
+                self.sendmsg('request_info',{'user':name})
+        
 
     def recovery(self,data):
         data = self.strip_data(data)
@@ -195,12 +234,6 @@ class RobotFamily:
             log("parse data error: %s" % (data), l=2)
             self.sendmsg('error', {'detail': 'json.load(data) error'})
             return 1
-        try:
-            assert 'user' in data
-        except:
-            log('data lack element: %s' % (data), l=2)
-            self.sendmsg('error', {'detail': 'data lack element'})
-            return 2
         return data
 
     def make_a_name(self,robot):
@@ -217,14 +250,16 @@ class RobotFamily:
                     break
         return name
 
-    def add_member(self, room, place, robot, master = 'MrLi'):
-        name = self.make_a_name(robot)
+    def add_member(self, room, place, robot, master = 'MrLi',name = None, requir_enter = True):
+        if name is None:
+            name = self.make_a_name(robot)
         rb = robot(room, place, name)
         rb.master = master
         self.members.append(rb)
         #'login': {"user": "name", "user_pwd": "pwd", "room": roomid}
         #TODO:place, robot password
-        self.sendmsg('login',{"user":name,"user_pwd":-1,"is_robot":True,"robot_type":robot.family_name()})
+        if requir_enter:
+            self.sendmsg('login',{"user":name,"user_pwd":-1,"is_robot":True,"robot_type":robot.family_name()})
         return name
 
     def find_player(self,name):
@@ -544,6 +579,9 @@ class RobotFamily:
         self.add_member(room,place,rb,master=data['master'])
 
     def close_family(self):
+        name_list = copy.deepcopy(self.members)
+        for rb in name_list:
+            self.cancel_player()
         if len(self.members) == 0:
             self.sio.disconnect()
         print("disconnect from server")
@@ -564,3 +602,5 @@ if __name__=="__main__":
     log("You are using socketio %s, engineio %s"%(socketio.__version__,engineio.__version__))
     fm = RobotFamily('http://%s:%d'%(config["ip"],config["port"]))
     fm.connect()
+    #code.interact(banner = "", local = locals())
+
