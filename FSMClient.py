@@ -26,9 +26,10 @@ import numpy as np
 
 #import your Robots
 sys.path.insert(0,'..')
-from MrZeroTree import MrZeroTree
+from ..MrZeroTree import MrZeroTree
+#from MrGreed import MrGreed
 
-robot_list = [MrZeroTree,]
+robot_list = [MrZeroTree,MrGreed]
 robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
 
 Recording_History = True
