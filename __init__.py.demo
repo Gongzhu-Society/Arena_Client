@@ -1,0 +1,8 @@
+#import sys
+#sys.path.insert(0,'..')
+#from MrZeroTree import MrZeroTree
+
+import your_robot
+
+robot_list = [your_robot,]
+robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])

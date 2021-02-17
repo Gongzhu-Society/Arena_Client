@@ -1,38 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
-import time,sys,traceback,math
-LOGLEVEL={0:"DEBUG",1:"INFO",2:"WARN",3:"ERR",4:"FATAL"}
-LOGFILE=sys.argv[0].split(".")
-LOGFILE[-1]="log"
-LOGFILE=".".join(LOGFILE)
-def log(msg,l=1,end="\n",logfile=None,fileonly=False):
-    st=traceback.extract_stack()[-2]
-    lstr=LOGLEVEL[l]
-    now_str="%s %03d"%(time.strftime("%y/%m/%d %H:%M:%S",time.localtime()),math.modf(time.time())[0]*1000)
-    if l<3:
-        tempstr="%s [%s,%s:%d] %s%s"%(now_str,lstr,st.name,st.lineno,str(msg),end)
-    else:
-        tempstr="%s [%s,%s:%d] %s:\n%s%s"%(now_str,lstr,st.name,st.lineno,str(msg),traceback.format_exc(limit=5),end)
-    if not fileonly:
-        print(tempstr,end="")
-    if l>=2 or fileonly:
-        if logfile==None:
-            logfile=LOGFILE
-        with open(logfile,"a") as f:
-            f.write(tempstr)
-
-import socketio,engineio,copy,json
+from Utils import log
+import socketio,engineio,copy,json,time,os
 import numpy as np
+from __init__ import robot_dict
 
-#import your Robots
-sys.path.insert(0,'..')
-from ..MrZeroTree import MrZeroTree
-#from MrGreed import MrGreed
-
-robot_list = [MrZeroTree,MrGreed]
-robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
-
-Recording_History = True
+if not os.path.exists('Records'):
+    os.makedirs('Records')
+    log("create dir: Records")
 
 class RobotFamily:
     def __init__(self,url):
@@ -489,7 +464,6 @@ class RobotFamily:
         player.trickend()
 
     def gameend(self,data):
-        #print('receive game end')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -508,10 +482,8 @@ class RobotFamily:
 
         player.state = 'end'
 
-        #print('send new game')
         self.sendmsg('new_game',{'user':data['user']})
 
-        #time.sleep(1)
         #self.cancel_player(player.name)
 
     def newgamereply(self,data):
@@ -586,18 +558,9 @@ class RobotFamily:
 
 if __name__=="__main__":
     from ast import literal_eval
-    with open("config.py",'r') as f:
+    with open("config.json",'r') as f:
         config=literal_eval(f.read()) #a dict like: {"port":9000}
         log("read log from %s: %s"%(f.name,config))
     log("You are using socketio %s, engineio %s"%(socketio.__version__,engineio.__version__))
     fm = RobotFamily('http://%s:%d'%(config["ip"],config["port"]))
     fm.connect()
-
-#if __name__ == '__main__':
-#    fm.create_room(MrGreed)
-#    while fm.members[0].room <= 0:
-#        pass
-#    rmid = fm.members[0].room
-#    fm.add_member(rmid,1,MrGreed)
-#    fm.add_member(rmid,2,MrGreed)
-#    fm.add_member(rmid,3,MrGreed)
