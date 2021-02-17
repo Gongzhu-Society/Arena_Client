@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 from Utils import log
-import socketio,engineio,copy,json,time
+import socketio,engineio,copy,json,time,os
 import numpy as np
 from __init__ import robot_dict
 
-#import your Robots
-#sys.path.insert(0,'..')
-#from MrZeroTree import MrZeroTree
-#robot_list = [MrZeroTree,]
-#from MrIf import MrIf
-#robot_list = [MrIf,]
-#robot_dict = dict([(rb.family_name(),rb) for rb in robot_list])
-
-Recording_History = True
+if not os.path.exists('Records'):
+    os.makedirs('Records')
+    log("create dir: Records")
 
 class RobotFamily:
     def __init__(self,url):
@@ -470,7 +464,6 @@ class RobotFamily:
         player.trickend()
 
     def gameend(self,data):
-        #print('receive game end')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -489,10 +482,8 @@ class RobotFamily:
 
         player.state = 'end'
 
-        #print('send new game')
         self.sendmsg('new_game',{'user':data['user']})
 
-        #time.sleep(1)
         #self.cancel_player(player.name)
 
     def newgamereply(self,data):
@@ -573,12 +564,3 @@ if __name__=="__main__":
     log("You are using socketio %s, engineio %s"%(socketio.__version__,engineio.__version__))
     fm = RobotFamily('http://%s:%d'%(config["ip"],config["port"]))
     fm.connect()
-
-#if __name__ == '__main__':
-#    fm.create_room(MrGreed)
-#    while fm.members[0].room <= 0:
-#        pass
-#    rmid = fm.members[0].room
-#    fm.add_member(rmid,1,MrGreed)
-#    fm.add_member(rmid,2,MrGreed)
-#    fm.add_member(rmid,3,MrGreed)
