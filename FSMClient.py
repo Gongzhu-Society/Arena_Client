@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 from Utils import log
-from typing import List
-import socketio,engineio,copy,json,time,os,math
+import socketio,engineio,copy,json,time,os
 import numpy as np
-import code,sys
-import threading
+import code
 from __init__ import robot_dict
 
 if not os.path.exists('Records'):
@@ -45,7 +43,7 @@ class RobotFamily:
             if self.turn == 10000:
                 for pl in self.members:
                     resnp = np.array(pl.res)
-                    print('{} mean:{} var:{}'.format(pl.name,resnp.mean(),math.sqrt(resnp.var())))
+                    print('{} mean:{} var:{}'.format(pl.name,resnp.mean(),np.sqrt(resnp.var()))) #?
                 self.sio.disconnect()
                 return
             for rb in self.members:
@@ -151,7 +149,7 @@ class RobotFamily:
                 robot = robot_dict[rbtype]
                 self.add_member(-1,-1,robot,name = name,requir_enter = False)
                 self.sendmsg('request_info',{'user':name})
-        
+
 
     def recovery(self,data):
         data = self.strip_data(data)
@@ -361,7 +359,6 @@ class RobotFamily:
         player.players_information = copy.deepcopy(data["players"])
 
     def shuffle(self,data):
-        #print('processin shuffle')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -384,7 +381,6 @@ class RobotFamily:
         player.shuffle()
 
     def update(self,data):
-        #print('processing update')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -403,7 +399,6 @@ class RobotFamily:
         player.update()
 
     def yourturn(self,data):
-        #print('processing youturn')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -414,7 +409,7 @@ class RobotFamily:
             return
 
         if not player.state == 'trick_before_play':
-            print(player.state)
+            log(player.state,l=2)
             return
         player.state = 'play_a_card'
 
@@ -429,11 +424,9 @@ class RobotFamily:
         except:
             if all_time<1:
                 time.sleep(1-all_time)
-        #print('sending choice')
         self.sendmsg('my_choice', {'user': player.name, 'card':card})
 
     def mychoicereply(self,data):
-        #print('enter reply')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -476,7 +469,6 @@ class RobotFamily:
         self.members.pop(index)
 
     def trickend(self,data):
-        #print('receive trick end')
         data = self.strip_data(data)
         if isinstance(data, int):
             return
@@ -488,9 +480,6 @@ class RobotFamily:
 
         if not player.state == 'trick_after_play':
             return
-
-        if player.place == 0:
-            print()
 
         player.scores = copy.deepcopy(data['scores'])
         player.history.append(player.cards_on_table)
@@ -558,12 +547,8 @@ class RobotFamily:
         if not player:
             self.sendmsg('error', {'detail': "no such player"})
             return
-        print('bonne journee1')
-        print(player.state)
         if not player.state == 'before_start':
             return
-        print('bonne journee2')
-        print(player.state)
         self.sendmsg('logout',{'user':name})
 
     def addrobot(self, data):
@@ -584,7 +569,7 @@ class RobotFamily:
             self.cancel_player()
         if len(self.members) == 0:
             self.sio.disconnect()
-        print("disconnect from server")
+        log("disconnect from server")
 
     def create_room(self,robot):
         name = self.make_a_name(robot)
